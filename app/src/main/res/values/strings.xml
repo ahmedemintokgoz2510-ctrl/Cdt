@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Claude AutoContinue</string>
+    <string name="a11y_desc">Yalnızca Claude uygulamasının ekranını okur; planlanan saatte, doğrulanan sohbete sizin belirlediğiniz devam mesajını yazıp gönderir. Parola veya veri toplamaz, hiçbir şey sunucuya gönderilmez.</string>
+</resources>
