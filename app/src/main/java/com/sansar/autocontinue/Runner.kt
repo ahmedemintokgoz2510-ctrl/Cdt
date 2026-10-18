@@ -17,6 +17,7 @@ object AutoState {
     @Volatile var activeId: String? = null
     @Volatile var busy = false
     @Volatile var misses = 0
+    @Volatile var kick: (() -> Unit)? = null
 }
 
 object Notifier {
@@ -76,16 +77,19 @@ object Runner {
         AutoState.activeId = id; AutoState.busy = false; AutoState.misses = 0
         val intent = ctx.packageManager.getLaunchIntentForPackage(AutoState.CLAUDE)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (intent == null) { pause(ctx, id, "Claude uygulaması bulunamadı"); return }
+        Wake.acquire(ctx)   // ekran kapalıysa uyandır
         Notifier.post(ctx, "Claude kontrol ediliyor…", intent, 2)
         try { ctx.startActivity(intent) } catch (_: Exception) {}
+        AutoState.kick?.invoke()
         WorkManager.getInstance(ctx).enqueueUniqueWork("timeout-$id", ExistingWorkPolicy.REPLACE,
-            OneTimeWorkRequestBuilder<TimeoutWorker>().setInitialDelay(120, TimeUnit.SECONDS)
+            OneTimeWorkRequestBuilder<TimeoutWorker>().setInitialDelay(180, TimeUnit.SECONDS)
                 .setInputData(workDataOf("id" to id)).build())
     }
 
     private fun clear(ctx: Context, id: String) {
         if (AutoState.activeId == id) AutoState.activeId = null
         AutoState.busy = false
+        Wake.release()
         WorkManager.getInstance(ctx).cancelUniqueWork("timeout-$id")
     }
 

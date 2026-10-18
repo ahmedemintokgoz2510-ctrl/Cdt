@@ -22,6 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -164,6 +167,9 @@ fun Detail(t: Task, back: () -> Unit) {
 fun SettingsScreen() {
     val ctx = LocalContext.current
     val notif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    var pin by remember { mutableStateOf("") }
+    var has by remember { mutableStateOf(Pin.get(ctx) != null) }
+    var relock by remember { mutableStateOf(Pin.relock(ctx)) }
     fun go(i: Intent) = try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
     Column(Modifier.systemBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("İzinler ve ayarlar", style = MaterialTheme.typography.headlineSmall)
@@ -176,5 +182,15 @@ fun SettingsScreen() {
         Text("Bildirim ve tam ekran bildirimi: Telefon kilitliyken Claude'u öne getirmeye çalışmak için kullanılır; Android buna her zaman izin vermez.", style = MaterialTheme.typography.bodySmall)
         if (Build.VERSION.SDK_INT >= 33) Button({ notif.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Bildirim izni") }
         if (Build.VERSION.SDK_INT >= 34) Button({ go(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${ctx.packageName}"))) }) { Text("Tam ekran bildirim izni") }
+        Text("Kilit açma (isteğe bağlı): Ekran kilitliyse uygulama ekranı uyandırıp rakamlı PIN'inizi girmeyi dener. PIN, Android Keystore ile şifrelenip yalnızca bu telefonda saklanır. Yalnızca rakamlı PIN desteklenir (desen/harfli şifre değil). Çalışması telefonun kilit ekranı arayüzüne bağlıdır, garanti değildir.", style = MaterialTheme.typography.bodySmall)
+        OutlinedTextField(pin, { pin = it.filter(Char::isDigit) },
+            label = { Text(if (has) "PIN kayıtlı (değiştirmek için yazın)" else "Rakamlı PIN") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button({ if (pin.length >= 4) { Pin.save(ctx, pin); pin = ""; has = true } }) { Text("PIN'i kaydet") }
+            OutlinedButton({ Pin.clear(ctx); has = false }) { Text("PIN'i sil") }
+        }
+        Row { Switch(relock, { relock = it; Pin.setRelock(ctx, it) }); Spacer(Modifier.width(8.dp)); Text("Telefonu ben açtıysam, gönderimden sonra ekranı tekrar kilitle") }
     }
 }
